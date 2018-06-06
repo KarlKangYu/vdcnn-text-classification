@@ -3,7 +3,7 @@ import numpy as np
 import math
 
 # weights initializers
-he_normal = tf.keras.initializers.he_normal()
+he_normal = tf.contrib.keras.initializers.he_normal()
 regularizer = tf.contrib.layers.l2_regularizer(1e-4)
 
 def Convolutional_Block(inputs, shortcut, num_filters, name, is_training):
@@ -86,7 +86,7 @@ class VDCNN():
         # Embedding Lookup 16
         with tf.device('/cpu:0'), tf.name_scope("embedding"):
             if use_he_uniform:
-                self.embedding_W = tf.get_variable(name='lookup_W', shape=[num_quantized_chars, embedding_size], initializer=tf.keras.initializers.he_uniform())
+                self.embedding_W = tf.get_variable(name='lookup_W', shape=[num_quantized_chars, embedding_size], initializer=tf.contrib.keras.initializers.he_uniform())
             else:
                 self.embedding_W = tf.Variable(tf.random_uniform([num_quantized_chars, embedding_size], -1.0, 1.0),name="embedding_W")
             self.embedded_characters = tf.nn.embedding_lookup(self.embedding_W, self.input_x)
