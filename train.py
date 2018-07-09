@@ -2,6 +2,7 @@ import os
 import numpy as np
 import datetime
 import tensorflow as tf
+from tensorflow.python import debug as tfdbg
 import data_helpers_2 as data_helpers
 import time
 
@@ -13,7 +14,7 @@ from vdcnn import VDCNN
 # tf.flags.DEFINE_string("database_path", "ag_news_csv/", "Path for the dataset to be used.")
 tf.flags.DEFINE_string("pos_dir", "data/rt-polaritydata/rt-polarity.pos", "Path of positive data")
 tf.flags.DEFINE_string("neg_dir", "data/rt-polaritydata/rt-polarity.neg", "Path of negative data")
-tf.flags.DEFINE_float("dev_sample_percentage", .1, "Percentage of the training data to use for validation")
+tf.flags.DEFINE_float("dev_sample_percentage", 0.001, "Percentage of the training data to use for validation")
 
 # Model Hyperparameters
 tf.flags.DEFINE_integer("sequence_max_length", 50, "Sequence Max Length (default: 1024)")
@@ -27,7 +28,7 @@ tf.flags.DEFINE_integer("min_frequency", 10, "Min word frequency to be contained
 tf.flags.DEFINE_float("learning_rate", 1e-2, "Starter Learning Rate (default: 1e-2)")
 tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 128)")
 tf.flags.DEFINE_integer("num_epochs", 50, "Number of training epochs (default: 50)")
-tf.flags.DEFINE_integer("evaluate_every", 50, "Evaluate model on dev set after this many steps (default: 50)")
+tf.flags.DEFINE_integer("evaluate_every", 1000, "Evaluate model on dev set after this many steps (default: 50)")
 tf.flags.DEFINE_integer("checkpoint_every", 100, "Save model after this many steps")
 tf.flags.DEFINE_boolean("enable_tensorboard", True, "Enable Tensorboard (default: True)")
 tf.flags.DEFINE_integer("num_checkpoints", 5, "Number of checkpoints to store")
@@ -77,6 +78,7 @@ def train():
 	# ConvNet
 	acc_list = [0]
 	sess = tf.Session()
+
 	cnn = VDCNN(num_classes=y_train.shape[1],
 		num_quantized_chars=len(text_vocab_processor.vocabulary_),
 		depth=FLAGS.depth,
@@ -129,6 +131,9 @@ def train():
 
 	# Initialize Graph
 	sess.run(tf.global_variables_initializer())
+
+	# sess = tfdbg.LocalCLIDebugWrapperSession(sess)  # 被调试器封装的会话
+	# sess.add_tensor_filter("has_inf_or_nan", tfdbg.has_inf_or_nan)  # 调试器添加过滤规则
 
 	# Train Step and Test Step
 	def train_step(x_batch, y_batch):
