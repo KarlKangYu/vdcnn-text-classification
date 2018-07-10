@@ -1,0 +1,109 @@
+2018-07-09 17:47:51.191288: I tensorflow/core/platform/cpu_feature_guard.cc:137] Your CPU supports instructions that this TensorFlow binary was not compiled to use: SSE4.1 SSE4.2 AVX AVX2 FMA
+/anaconda3/lib/python3.6/importlib/_bootstrap.py:219: RuntimeWarning: compiletime version 3.5 of module 'tensorflow.python.framework.fast_tensor_util' does not match runtime version 3.6
+  return f(*args, **kwds)
+/anaconda3/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+Parameters:
+batch_size=1
+checkpoint_every=100
+depth=9
+dev_sample_percentage=0.1
+downsampling_type=maxpool
+enable_tensorboard=True
+evaluate_every=50
+learning_rate=0.01
+min_frequency=1
+neg_dir=data/neg_500
+num_checkpoints=5
+num_epochs=50
+optional_shortcut=False
+pos_dir=data/pos_500
+sequence_max_length=50
+use_he_uniform=True
+
+Loading data...
+Text Vocabulary Size: 1538
+x = (1000, 50)
+y = (1000, 2)
+
+Train/Dev split: 900/100
+
+Loading data succees...
+--------------------
+Embedded Lookup: (?, 50, 16)
+--------------------
+Temp Conv (?, 50, 64)
+--------------------
+Convolutional Block 64 1
+--------------------
+Conv1D: (?, 50, 64)
+Conv1D: (?, 50, 64)
+--------------------
+--------------------
+Convolutional Block 64 2
+--------------------
+Conv1D: (?, 50, 64)
+Conv1D: (?, 50, 64)
+--------------------
+Pooling: (?, 27, 128)
+--------------------
+Convolutional Block 128 1
+--------------------
+Conv1D: (?, 27, 128)
+Conv1D: (?, 27, 128)
+--------------------
+--------------------
+Convolutional Block 128 2
+--------------------
+Conv1D: (?, 27, 128)
+Conv1D: (?, 27, 128)
+--------------------
+Pooling: (?, 16, 256)
+--------------------
+Convolutional Block 256 1
+--------------------
+Conv1D: (?, 16, 256)
+Conv1D: (?, 16, 256)
+--------------------
+--------------------
+Convolutional Block 256 2
+--------------------
+Conv1D: (?, 16, 256)
+Conv1D: (?, 16, 256)
+--------------------
+Pooling: (?, 10, 512)
+--------------------
+Convolutional Block 512 1
+--------------------
+Conv1D: (?, 10, 512)
+Conv1D: (?, 10, 512)
+--------------------
+--------------------
+Convolutional Block 512 2
+--------------------
+Conv1D: (?, 10, 512)
+Conv1D: (?, 10, 512)
+--------------------
+8-maxpooling: (?, 512, 8)
+Writing to /Users/xm180428/Desktop/work/VDCNN/runs/1531129674
+
+Traceback (most recent call last):
+  File "train.py", line 208, in <module>
+    tf.app.run()
+  File "/anaconda3/lib/python3.6/site-packages/tensorflow/python/platform/app.py", line 48, in run
+    _sys.exit(main(_sys.argv[:1] + flags_passthrough))
+  File "train.py", line 204, in main
+    train()
+  File "train.py", line 136, in train
+    sess.run(tf.global_variables_initializer())
+  File "/anaconda3/lib/python3.6/site-packages/tensorflow/python/debug/wrappers/framework.py", line 455, in run
+    is_callable_runner=bool(callable_runner)))
+  File "/anaconda3/lib/python3.6/site-packages/tensorflow/python/debug/wrappers/local_cli_wrapper.py", line 255, in on_run_start
+    self._run_start_response = self._launch_cli()
+  File "/anaconda3/lib/python3.6/site-packages/tensorflow/python/debug/wrappers/local_cli_wrapper.py", line 431, in _launch_cli
+    title_color=self._title_color)
+  File "/anaconda3/lib/python3.6/site-packages/tensorflow/python/debug/cli/curses_ui.py", line 492, in run_ui
+    self._screen_launch(enable_mouse_on_start=enable_mouse_on_start)
+  File "/anaconda3/lib/python3.6/site-packages/tensorflow/python/debug/cli/curses_ui.py", line 445, in _screen_launch
+    curses.cbreak()
+_curses.error: cbreak() returned ERR

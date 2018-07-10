@@ -3,7 +3,8 @@ import numpy as np
 import math
 
 # weights initializers
-he_normal = tf.contrib.keras.initializers.he_normal()
+#he_normal = tf.contrib.keras.initializers.he_normal()
+he_normal = tf.contrib.layers.variance_scaling_initializer()
 regularizer = tf.contrib.layers.l2_regularizer(1e-4)
 
 def Convolutional_Block(inputs, shortcut, num_filters, name, is_training):
@@ -48,7 +49,7 @@ def downsampling(inputs, downsampling_type, name, optional_shortcut=False, short
         shortcut = tf.layers.conv1d(inputs=shortcut, filters=shortcut.get_shape()[2], kernel_size=1,
                             strides=2, padding='same', use_bias=False)
         print("-"*5)
-        print("Optional Shortcut:", shortcut.get_shape())
+        print("Optional Downsampling Shortcut:", shortcut.get_shape())
         print("-"*5)
         pool += shortcut
     pool = fixed_padding(inputs=pool)
@@ -63,7 +64,7 @@ def fixed_padding(inputs, kernel_size=3):
     return padded_inputs
 
 class VDCNN():
-    def __init__(self, num_classes, sequence_max_length=1024, num_quantized_chars=69, embedding_size=16, 
+    def __init__(self, num_classes, sequence_max_length=20, num_quantized_chars=69, embedding_size=300,
                  depth=9, downsampling_type='maxpool', use_he_uniform=True, optional_shortcut=False):
 
         # Depth to No. Layers
@@ -86,7 +87,8 @@ class VDCNN():
         # Embedding Lookup 16
         with tf.device('/cpu:0'), tf.name_scope("embedding"):
             if use_he_uniform:
-                self.embedding_W = tf.get_variable(name='lookup_W', shape=[num_quantized_chars, embedding_size], initializer=tf.contrib.keras.initializers.he_uniform())
+                self.embedding_W = tf.get_variable(name='lookup_W', shape=[num_quantized_chars, embedding_size],
+                                                   initializer=tf.contrib.layers.variance_scaling_initializer())
             else:
                 self.embedding_W = tf.Variable(tf.random_uniform([num_quantized_chars, embedding_size], -1.0, 1.0),name="embedding_W")
             self.embedded_characters = tf.nn.embedding_lookup(self.embedding_W, self.input_x)

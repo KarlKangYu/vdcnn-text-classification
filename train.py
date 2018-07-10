@@ -3,7 +3,7 @@ import numpy as np
 import datetime
 import tensorflow as tf
 from tensorflow.python import debug as tfdbg
-import data_helpers_2 as data_helpers
+import data_loader
 import time
 
 # State which model to use here
@@ -12,26 +12,27 @@ from vdcnn import VDCNN
 # Parameters settings
 # Data loading params
 # tf.flags.DEFINE_string("database_path", "ag_news_csv/", "Path for the dataset to be used.")
-tf.flags.DEFINE_string("pos_dir", "data/rt-polaritydata/rt-polarity.pos", "Path of positive data")
-tf.flags.DEFINE_string("neg_dir", "data/rt-polaritydata/rt-polarity.neg", "Path of negative data")
-tf.flags.DEFINE_float("dev_sample_percentage", 0.001, "Percentage of the training data to use for validation")
+tf.flags.DEFINE_string("pos_data", "data/rt-polaritydata/rt-polarity.pos", "Path of positive data")
+tf.flags.DEFINE_string("neg_data", "data/rt-polaritydata/rt-polarity.neg", "Path of negative data")
+tf.flags.DEFINE_float("dev_percentage", 0.001, "Percentage of the training data to use for validation")
+tf.flags.DEFINE_integer('vocab_size', 50000,                             'vocab size')
 
 # Model Hyperparameters
-tf.flags.DEFINE_integer("sequence_max_length", 50, "Sequence Max Length (default: 1024)")
+tf.flags.DEFINE_integer("max_sequence_length", 50, "Sequence Max Length (default: 1024)")
 tf.flags.DEFINE_string("downsampling_type", "maxpool", "Types of downsampling methods, use either three of maxpool, k-maxpool and linear (default: 'maxpool')")
 tf.flags.DEFINE_integer("depth", 9, "Depth for VDCNN, use either 9, 17, 29 or 47 (default: 9)")
 tf.flags.DEFINE_boolean("use_he_uniform", True, "Initialize embedding lookup with he_uniform (default: True)")
-tf.flags.DEFINE_boolean("optional_shortcut", False, "Use optional shortcut (default: False)")
-tf.flags.DEFINE_integer("min_frequency", 10, "Min word frequency to be contained in vocab list")
+tf.flags.DEFINE_boolean("optional_shortcut", True, "Use optional shortcut (default: False)")
+#tf.flags.DEFINE_integer("min_frequency", 10, "Min word frequency to be contained in vocab list")
 
 # Training Parameters
-tf.flags.DEFINE_float("learning_rate", 1e-2, "Starter Learning Rate (default: 1e-2)")
+tf.flags.DEFINE_float("learning_rate", 0.01, "Starter Learning Rate (default: 1e-2)")
 tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 128)")
 tf.flags.DEFINE_integer("num_epochs", 50, "Number of training epochs (default: 50)")
 tf.flags.DEFINE_integer("evaluate_every", 1000, "Evaluate model on dev set after this many steps (default: 50)")
 tf.flags.DEFINE_integer("checkpoint_every", 100, "Save model after this many steps")
 tf.flags.DEFINE_boolean("enable_tensorboard", True, "Enable Tensorboard (default: True)")
-tf.flags.DEFINE_integer("num_checkpoints", 5, "Number of checkpoints to store")
+tf.flags.DEFINE_integer("num_checkpoints", 3, "Number of checkpoints to store")
 
 FLAGS = tf.flags.FLAGS
 FLAGS._parse_flags()
@@ -44,35 +45,22 @@ def train():
 	# Data Preparation
 	# Load data
 	print("Loading data...")
-	# data_helper = data_helper(sequence_max_length=FLAGS.sequence_max_length)
-	# train_data, train_label, test_data, test_label = data_helper.load_dataset(FLAGS.database_path)
-
-	with tf.device('/cpu:0'):
-		x_text, y = data_helpers.load_data_and_labels(FLAGS.pos_dir, FLAGS.neg_dir)
-
-	text_vocab_processor = tf.contrib.learn.preprocessing.VocabularyProcessor(FLAGS.sequence_max_length,
-																			  min_frequency=FLAGS.min_frequency)
-	x = np.array(list(text_vocab_processor.fit_transform(x_text)))
-	print("Text Vocabulary Size: {:d}".format(len(text_vocab_processor.vocabulary_)))
-
-	print("x = {0}".format(x.shape))
-	print("y = {0}".format(y.shape))
-	print("")
-
-	# Randomly shuffle data
+	x, y = data_loader.read_data(FLAGS.pos_data, FLAGS.neg_data,
+												  FLAGS.max_sequence_length)
+	print("Data Size:", len(y))
 	np.random.seed(10)
 	shuffle_indices = np.random.permutation(np.arange(len(y)))
 	x_shuffled = x[shuffle_indices]
 	y_shuffled = y[shuffle_indices]
 
-	# Split train/test set
-	# TODO: This is very crude, should use cross-validation
-	dev_sample_index = -1 * int(FLAGS.dev_sample_percentage * float(len(y)))
+	dev_sample_index = -1 * int(FLAGS.dev_percentage * float(len(y)))
 	x_train, x_dev = x_shuffled[:dev_sample_index], x_shuffled[dev_sample_index:]
 	y_train, y_dev = y_shuffled[:dev_sample_index], y_shuffled[dev_sample_index:]
-	print("Train/Dev split: {:d}/{:d}\n".format(len(y_train), len(y_dev)))
 
-	num_batches_per_epoch = int((len(x_train)-1)/FLAGS.batch_size) + 1
+	del x, y, x_shuffled, y_shuffled
+	print("Train/Dev split: {:d}/{:d}".format(len(y_train), len(y_dev)))
+
+	num_batches_per_epoch = int((len(x_train) - 1) / FLAGS.batch_size) + 1
 	print("Loading data succees...")
 
 	# ConvNet
@@ -80,9 +68,9 @@ def train():
 	sess = tf.Session()
 
 	cnn = VDCNN(num_classes=y_train.shape[1],
-		num_quantized_chars=len(text_vocab_processor.vocabulary_),
+		num_quantized_chars=FLAGS.vocab_size,
 		depth=FLAGS.depth,
-		sequence_max_length=FLAGS.sequence_max_length,
+		sequence_max_length=FLAGS.max_sequence_length,
 		downsampling_type=FLAGS.downsampling_type,
 		use_he_uniform=FLAGS.use_he_uniform,
 		optional_shortcut=FLAGS.optional_shortcut)
@@ -94,7 +82,7 @@ def train():
 		learning_rate = tf.train.exponential_decay(FLAGS.learning_rate, global_step, FLAGS.num_epochs*num_batches_per_epoch, 0.95, staircase=True)
 		optimizer = tf.train.AdamOptimizer(learning_rate)
 		gradients, variables = zip(*optimizer.compute_gradients(cnn.loss))
-		gradients, _ = tf.clip_by_global_norm(gradients, 7.0)
+		gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
 		train_op = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)
 
 	###
@@ -123,11 +111,6 @@ def train():
 	if not os.path.exists(checkpoint_dir):
 		os.makedirs(checkpoint_dir)
 	saver = tf.train.Saver(tf.global_variables(), max_to_keep=FLAGS.num_checkpoints)
-
-	# Write vocabulary
-	text_vocab_processor.save(os.path.join(out_dir, "text_vocab"))
-	###
-
 
 	# Initialize Graph
 	sess.run(tf.global_variables_initializer())
@@ -166,7 +149,7 @@ def train():
 	# Generate batches
 	# train_batches = data_helper.batch_iter(list(zip(train_data, train_label)), FLAGS.batch_size, FLAGS.num_epochs)
 
-	batches = data_helpers.batch_iter(list(zip(x_train, y_train)), FLAGS.batch_size, FLAGS.num_epochs)
+	batches = data_loader.batch_iter(list(zip(x_train, y_train)), FLAGS.batch_size, FLAGS.num_epochs)
 
 	# Training loop. For each batch...
 	for train_batch in batches:
@@ -179,7 +162,7 @@ def train():
 			i = 0
 			index = 0
 			sum_loss = 0
-			test_batches = data_helpers.batch_iter(list(zip(x_dev, y_dev)), FLAGS.batch_size, 1, shuffle=False)
+			test_batches = data_loader.batch_iter(list(zip(x_dev, y_dev)), FLAGS.batch_size, 1, shuffle=False)
 			y_preds = np.ones(shape=len(y_dev), dtype=np.int)
 			for test_batch in test_batches:
 				x_test_batch, y_test_batch = zip(*test_batch)
