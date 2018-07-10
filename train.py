@@ -65,7 +65,13 @@ def train():
 
 	# ConvNet
 	acc_list = [0]
-	sess = tf.Session()
+
+	session_conf = tf.ConfigProto(
+		allow_soft_placement=FLAGS.allow_soft_placement,
+		log_device_placement=FLAGS.log_device_placement)
+	session_conf.gpu_options.allow_growth = True
+	# session_conf.gpu_options.per_process_gpu_memory_fraction = 0.45
+	sess = tf.Session(config=session_conf)
 
 	cnn = VDCNN(num_classes=y_train.shape[1],
 		num_quantized_chars=FLAGS.vocab_size,
